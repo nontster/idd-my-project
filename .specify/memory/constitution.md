@@ -1,50 +1,102 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# API Key Management Service Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Enterprise Developer Purpose
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+The service MUST serve enterprise developers integrating our platform. Every specification
+MUST identify who the capability serves and explain the business outcome it supports for
+those users. Capabilities MUST be described in business and domain terms before technical
+design choices are introduced.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Mandatory Tenant Scope
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Every API Key MUST be created with a specific Tenant scope. Creation without a specific
+Tenant scope MUST fail; the service MUST NOT issue an unscoped key. A key's authority MUST
+remain within its Tenant scope. This rule establishes organizational ownership and prevents
+access across Tenant boundaries.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Irreversible Revocation
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+A revoked API Key MUST never be re-activated or accepted as active again. Revocation is a
+terminal state for that key. Any future capability involving recovery or renewed access
+MUST preserve this invariant and MUST NOT restore the revoked key's authority.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Immediate Revocation
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Revocation MUST take effect immediately: once a key is revoked, every subsequent
+authentication attempt using it MUST be rejected. There MUST be no grace period during
+which a revoked key remains usable. The service MUST NOT report successful revocation
+before enforcement is effective. If revocation cannot be completed, the failure MUST be
+communicated explicitly rather than reported as success.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Compromised keys can cause catastrophic data leaks. Specifications MUST therefore treat
+immediate revocation as a critical business requirement and MUST NOT weaken it for
+convenience, availability, or performance.
+
+### V. Complete Business Specifications
+
+Every specification MUST explicitly state:
+
+- Who the capability serves, including the enterprise developer role or context involved.
+- What happens on each failure path, including the resulting business state and the exact
+  user-facing error message. API error text delivered to an integrating developer counts
+  as user-facing text.
+- What is explicitly out of scope, with concrete exclusions rather than implicit omissions.
+
+Success-path descriptions alone are insufficient. Specifications covering key creation or
+revocation MUST include the applicable tenant-scope rejection, attempted re-activation,
+use of a revoked key, and inability to complete revocation as failure scenarios. Reviewers
+MUST be able to determine compliance from explicit acceptance scenarios.
+
+## Business Context
+
+The API Key Management Service supports enterprise developers integrating our platform
+using credentials owned by their organizations. Its business rules establish Tenant
+ownership at creation and allow compromised credentials to lose authority immediately and
+permanently through revocation.
+
+The current work establishes business context, domain vocabulary, and specification
+obligations only. Application implementation, endpoint and payload design, database schema,
+cryptographic algorithm selection, architecture, technology choices, and deployment are
+explicitly out of scope for this constitution update. They require subsequent specification
+or planning work and MUST comply with these business rules.
+
+## Domain Vocabulary
+
+Specifications MUST use the following terms consistently and MUST NOT use them
+interchangeably:
+
+| Term | Definition |
+|------|------------|
+| API Key | The raw secret issued. |
+| Key Prefix | The first 8 characters of an API Key, used for identification. |
+| Key Hash | The cryptographic digest of an API Key stored in the database. |
+| Tenant | The organization owning the API Key. |
+
+A Key Prefix identifies a key; it MUST NOT be described as the raw secret or its stored
+digest. References to a Key Hash MUST distinguish the stored digest from the issued API
+Key. Changes to these definitions MUST follow the amendment procedure below.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution governs business rules, domain vocabulary, and specification quality
+for the API Key Management Service. Specifications and subsequent plans MUST conform to
+it. Reviewers MUST check the intended users, failure behavior and exact error messages,
+explicit scope exclusions, applicable business invariants, and vocabulary before accepting
+a specification. Missing information or contradictory requirements MUST be resolved before
+the specification is accepted.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Amendments MUST document the proposed change, its business rationale, affected principles
+or definitions, and its impact on existing specifications and plans. Amendments require
+project-owner approval. Affected artifacts MUST be identified and brought into compliance
+before dependent work proceeds. Reviewers MUST check compliance whenever specifications
+or plans change.
+
+Constitution versions MUST follow semantic versioning: MAJOR for incompatible removal or
+redefinition of governance or principles; MINOR for new principles, sections, or materially
+expanded guidance; PATCH for clarifications and non-semantic wording corrections. Every
+amendment MUST record its version and amendment date while preserving the original
+ratification date. This first adoption is version 1.0.0.
+
+**Version**: 1.0.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28
