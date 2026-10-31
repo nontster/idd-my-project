@@ -1,0 +1,79 @@
+{
+  "dataset": {
+    "keys": 100000,
+    "tenants": 1000
+  },
+  "configuration": {
+    "gatewayValidationTimeoutMs": 500,
+    "validationTimeoutMs": 200,
+    "identityTimeoutMs": 100,
+    "managementTimeoutMs": 2000,
+    "automaticRetries": 0,
+    "sqliteBusyTimeoutMs": 0,
+    "sqliteSynchronous": "FULL",
+    "walAutoCheckpointPages": 1000
+  },
+  "runtime": {
+    "node": "v24.15.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "osRelease": "27.2.0",
+    "cpu": "Apple M1",
+    "cpuCount": 8
+  },
+  "warmElapsedMs": 60000.651332999994,
+  "measurementElapsedMs": 300000.845,
+  "validation": {
+    "offered": 30000,
+    "completed": 30000,
+    "transportFailures": 0,
+    "timeouts": 0,
+    "cancellations": 0,
+    "outstanding": 0,
+    "incorrectOutcomes": 0,
+    "received": 30000,
+    "completedAuthorityResponses": 30000,
+    "receivedWithoutResponse": 0,
+    "unavailableResponses": 0
+  },
+  "revocation": {
+    "offered": 300,
+    "completed": 300,
+    "transportFailures": 0,
+    "timeouts": 0,
+    "cancellations": 0,
+    "outstanding": 0,
+    "incorrectOutcomes": 0,
+    "received": 300,
+    "completedAuthorityResponses": 300,
+    "receivedWithoutResponse": 0,
+    "unavailableResponses": 0
+  },
+  "warmFailures": 0,
+  "acceptedValidations": 15000,
+  "rejectedValidations": 15000,
+  "successfulRevocations": 300,
+  "unsuccessfulOrUnconfirmedRevocations": 0,
+  "authorityValidation": {
+    "samples": 30000,
+    "p95Ms": 1.1655840000021271,
+    "p99Ms": 1.4057920000050217,
+    "maxMs": 19.350791000004392
+  },
+  "authoritySuccessfulRevocation": {
+    "samples": 300,
+    "p95Ms": 2.5246659999829717,
+    "p99Ms": 2.749167000001762,
+    "maxMs": 17.42795800001477
+  },
+  "scheduledGatewayEndToEnd": {
+    "samples": 30000,
+    "p95Ms": 4.82954200002132,
+    "p99Ms": 6.256499999988591,
+    "maxMs": 130.72037500000442
+  },
+  "postRevocationAccepts": 0,
+  "unattributedReceived": 0,
+  "measuredOutstandingAtStop": 0,
+  "measurement": "authority request event to response finish; gateway end-to-end from scheduled arrival; no durations invented for missing responses"
+}

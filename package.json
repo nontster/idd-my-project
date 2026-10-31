@@ -1,0 +1,26 @@
+{
+  "name": "api-key-management-service",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "scripts": {
+    "build": "node scripts/run.cjs build",
+    "test": "npm run test:coverage",
+    "test:acceptance:security": "node scripts/run.cjs test acceptance/security",
+    "test:contract": "node scripts/run.cjs test contract",
+    "test:integration": "node scripts/run.cjs test integration",
+    "test:unit": "node scripts/run.cjs test unit",
+    "test:coverage": "node scripts/run.cjs test coverage",
+    "test:performance": "node scripts/run.cjs test performance",
+    "start": "node scripts/run.cjs start",
+    "start:dev": "node scripts/run.cjs dev"
+  },
+  "devDependencies": {
+    "@jest/globals": "30.3.0",
+    "@types/node": "24.19.2",
+    "jest": "30.3.0",
+    "typescript": "5.9.3"
+  }
+}

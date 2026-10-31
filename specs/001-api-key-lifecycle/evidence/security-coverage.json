@@ -1,0 +1,346 @@
+{
+  "complete": true,
+  "testSuites": 58,
+  "tests": 429,
+  "pending": 0,
+  "todo": 0,
+  "node": "v24.15.0",
+  "sourceCount": 47,
+  "runtimeModuleCount": 39,
+  "typeOnlyModuleCount": 8,
+  "sourceAndEmissionInventoryMatch": true,
+  "runtimeBranchSlots": 1141,
+  "runtimeCoveredBranchSlots": 1141,
+  "rawAggregateBranchesPercent": 99.3,
+  "modules": [
+    {
+      "source": "src/adapters/clock/system-clock.ts",
+      "emitted": "build/src/adapters/clock/system-clock.js",
+      "runtimeBearing": true,
+      "branchSlots": 5,
+      "coveredBranchSlots": 5
+    },
+    {
+      "source": "src/adapters/crypto/node-key-crypto.ts",
+      "emitted": "build/src/adapters/crypto/node-key-crypto.js",
+      "runtimeBearing": true,
+      "branchSlots": 37,
+      "coveredBranchSlots": 37
+    },
+    {
+      "source": "src/adapters/identity/host-identity.ts",
+      "emitted": "build/src/adapters/identity/host-identity.js",
+      "runtimeBearing": true,
+      "branchSlots": 9,
+      "coveredBranchSlots": 9
+    },
+    {
+      "source": "src/adapters/logging/safe-logger.ts",
+      "emitted": "build/src/adapters/logging/safe-logger.js",
+      "runtimeBearing": true,
+      "branchSlots": 9,
+      "coveredBranchSlots": 9
+    },
+    {
+      "source": "src/adapters/sqlite/creation-repository.ts",
+      "emitted": "build/src/adapters/sqlite/creation-repository.js",
+      "runtimeBearing": true,
+      "branchSlots": 12,
+      "coveredBranchSlots": 12
+    },
+    {
+      "source": "src/adapters/sqlite/database.ts",
+      "emitted": "build/src/adapters/sqlite/database.js",
+      "runtimeBearing": true,
+      "branchSlots": 34,
+      "coveredBranchSlots": 34
+    },
+    {
+      "source": "src/adapters/sqlite/listing-repository.ts",
+      "emitted": "build/src/adapters/sqlite/listing-repository.js",
+      "runtimeBearing": true,
+      "branchSlots": 9,
+      "coveredBranchSlots": 9
+    },
+    {
+      "source": "src/adapters/sqlite/recovery.ts",
+      "emitted": "build/src/adapters/sqlite/recovery.js",
+      "runtimeBearing": true,
+      "branchSlots": 46,
+      "coveredBranchSlots": 46
+    },
+    {
+      "source": "src/adapters/sqlite/revocation-repository.ts",
+      "emitted": "build/src/adapters/sqlite/revocation-repository.js",
+      "runtimeBearing": true,
+      "branchSlots": 20,
+      "coveredBranchSlots": 20
+    },
+    {
+      "source": "src/adapters/sqlite/schema.ts",
+      "emitted": "build/src/adapters/sqlite/schema.js",
+      "runtimeBearing": true,
+      "branchSlots": 6,
+      "coveredBranchSlots": 6
+    },
+    {
+      "source": "src/adapters/sqlite/scoped-key-lookup.ts",
+      "emitted": "build/src/adapters/sqlite/scoped-key-lookup.js",
+      "runtimeBearing": true,
+      "branchSlots": 11,
+      "coveredBranchSlots": 11
+    },
+    {
+      "source": "src/adapters/sqlite/security-events.ts",
+      "emitted": "build/src/adapters/sqlite/security-events.js",
+      "runtimeBearing": true,
+      "branchSlots": 20,
+      "coveredBranchSlots": 20
+    },
+    {
+      "source": "src/adapters/sqlite/unit-of-work.ts",
+      "emitted": "build/src/adapters/sqlite/unit-of-work.js",
+      "runtimeBearing": true,
+      "branchSlots": 22,
+      "coveredBranchSlots": 22
+    },
+    {
+      "source": "src/adapters/sqlite/validation-repository.ts",
+      "emitted": "build/src/adapters/sqlite/validation-repository.js",
+      "runtimeBearing": true,
+      "branchSlots": 14,
+      "coveredBranchSlots": 14
+    },
+    {
+      "source": "src/bootstrap/app.ts",
+      "emitted": "build/src/bootstrap/app.js",
+      "runtimeBearing": true,
+      "branchSlots": 62,
+      "coveredBranchSlots": 62
+    },
+    {
+      "source": "src/bootstrap/configuration.ts",
+      "emitted": "build/src/bootstrap/configuration.js",
+      "runtimeBearing": true,
+      "branchSlots": 13,
+      "coveredBranchSlots": 13
+    },
+    {
+      "source": "src/bootstrap/development.ts",
+      "emitted": "build/src/bootstrap/development.js",
+      "runtimeBearing": true,
+      "branchSlots": 24,
+      "coveredBranchSlots": 24
+    },
+    {
+      "source": "src/bootstrap/main.ts",
+      "emitted": "build/src/bootstrap/main.js",
+      "runtimeBearing": true,
+      "branchSlots": 13,
+      "coveredBranchSlots": 13
+    },
+    {
+      "source": "src/bootstrap/process-lifecycle.ts",
+      "emitted": "build/src/bootstrap/process-lifecycle.js",
+      "runtimeBearing": true,
+      "branchSlots": 5,
+      "coveredBranchSlots": 5
+    },
+    {
+      "source": "src/domain/error-codes.ts",
+      "emitted": "build/src/domain/error-codes.js",
+      "runtimeBearing": true,
+      "branchSlots": 3,
+      "coveredBranchSlots": 3
+    },
+    {
+      "source": "src/domain/errors.ts",
+      "emitted": "build/src/domain/errors.js",
+      "runtimeBearing": true,
+      "branchSlots": 7,
+      "coveredBranchSlots": 7
+    },
+    {
+      "source": "src/domain/identity.ts",
+      "emitted": "build/src/domain/identity.js",
+      "runtimeBearing": false,
+      "branchSlots": 1,
+      "coveredBranchSlots": 0
+    },
+    {
+      "source": "src/domain/key-dtos.ts",
+      "emitted": "build/src/domain/key-dtos.js",
+      "runtimeBearing": true,
+      "branchSlots": 3,
+      "coveredBranchSlots": 3
+    },
+    {
+      "source": "src/domain/key-metadata.ts",
+      "emitted": "build/src/domain/key-metadata.js",
+      "runtimeBearing": true,
+      "branchSlots": 17,
+      "coveredBranchSlots": 17
+    },
+    {
+      "source": "src/domain/key-record.ts",
+      "emitted": "build/src/domain/key-record.js",
+      "runtimeBearing": true,
+      "branchSlots": 31,
+      "coveredBranchSlots": 31
+    },
+    {
+      "source": "src/domain/outcome.ts",
+      "emitted": "build/src/domain/outcome.js",
+      "runtimeBearing": false,
+      "branchSlots": 1,
+      "coveredBranchSlots": 0
+    },
+    {
+      "source": "src/domain/request-context.ts",
+      "emitted": "build/src/domain/request-context.js",
+      "runtimeBearing": true,
+      "branchSlots": 55,
+      "coveredBranchSlots": 55
+    },
+    {
+      "source": "src/domain/security-attempt.ts",
+      "emitted": "build/src/domain/security-attempt.js",
+      "runtimeBearing": true,
+      "branchSlots": 32,
+      "coveredBranchSlots": 32
+    },
+    {
+      "source": "src/domain/validation-decision.ts",
+      "emitted": "build/src/domain/validation-decision.js",
+      "runtimeBearing": true,
+      "branchSlots": 20,
+      "coveredBranchSlots": 20
+    },
+    {
+      "source": "src/domain/values.ts",
+      "emitted": "build/src/domain/values.js",
+      "runtimeBearing": true,
+      "branchSlots": 13,
+      "coveredBranchSlots": 13
+    },
+    {
+      "source": "src/gateway/enforcement.ts",
+      "emitted": "build/src/gateway/enforcement.js",
+      "runtimeBearing": true,
+      "branchSlots": 51,
+      "coveredBranchSlots": 51
+    },
+    {
+      "source": "src/ports/clock.ts",
+      "emitted": "build/src/ports/clock.js",
+      "runtimeBearing": false,
+      "branchSlots": 1,
+      "coveredBranchSlots": 0
+    },
+    {
+      "source": "src/ports/identity-verifier.ts",
+      "emitted": "build/src/ports/identity-verifier.js",
+      "runtimeBearing": false,
+      "branchSlots": 1,
+      "coveredBranchSlots": 0
+    },
+    {
+      "source": "src/ports/key-cryptography.ts",
+      "emitted": "build/src/ports/key-cryptography.js",
+      "runtimeBearing": false,
+      "branchSlots": 1,
+      "coveredBranchSlots": 0
+    },
+    {
+      "source": "src/ports/key-repository.ts",
+      "emitted": "build/src/ports/key-repository.js",
+      "runtimeBearing": false,
+      "branchSlots": 1,
+      "coveredBranchSlots": 0
+    },
+    {
+      "source": "src/ports/mutation-unit-of-work.ts",
+      "emitted": "build/src/ports/mutation-unit-of-work.js",
+      "runtimeBearing": false,
+      "branchSlots": 1,
+      "coveredBranchSlots": 0
+    },
+    {
+      "source": "src/ports/security-event-repository.ts",
+      "emitted": "build/src/ports/security-event-repository.js",
+      "runtimeBearing": false,
+      "branchSlots": 1,
+      "coveredBranchSlots": 0
+    },
+    {
+      "source": "src/routes/api.ts",
+      "emitted": "build/src/routes/api.js",
+      "runtimeBearing": true,
+      "branchSlots": 151,
+      "coveredBranchSlots": 151
+    },
+    {
+      "source": "src/services/authentication.ts",
+      "emitted": "build/src/services/authentication.js",
+      "runtimeBearing": true,
+      "branchSlots": 77,
+      "coveredBranchSlots": 77
+    },
+    {
+      "source": "src/services/creation.ts",
+      "emitted": "build/src/services/creation.js",
+      "runtimeBearing": true,
+      "branchSlots": 47,
+      "coveredBranchSlots": 47
+    },
+    {
+      "source": "src/services/decision-gate.ts",
+      "emitted": "build/src/services/decision-gate.js",
+      "runtimeBearing": true,
+      "branchSlots": 17,
+      "coveredBranchSlots": 17
+    },
+    {
+      "source": "src/services/listing.ts",
+      "emitted": "build/src/services/listing.js",
+      "runtimeBearing": true,
+      "branchSlots": 18,
+      "coveredBranchSlots": 18
+    },
+    {
+      "source": "src/services/management-attempt.ts",
+      "emitted": "build/src/services/management-attempt.js",
+      "runtimeBearing": true,
+      "branchSlots": 92,
+      "coveredBranchSlots": 92
+    },
+    {
+      "source": "src/services/reactivation-rejection.ts",
+      "emitted": "build/src/services/reactivation-rejection.js",
+      "runtimeBearing": true,
+      "branchSlots": 19,
+      "coveredBranchSlots": 19
+    },
+    {
+      "source": "src/services/revocation.ts",
+      "emitted": "build/src/services/revocation.js",
+      "runtimeBearing": true,
+      "branchSlots": 56,
+      "coveredBranchSlots": 56
+    },
+    {
+      "source": "src/services/secret-retrieval.ts",
+      "emitted": "build/src/services/secret-retrieval.js",
+      "runtimeBearing": true,
+      "branchSlots": 15,
+      "coveredBranchSlots": 15
+    },
+    {
+      "source": "src/services/validation.ts",
+      "emitted": "build/src/services/validation.js",
+      "runtimeBearing": true,
+      "branchSlots": 46,
+      "coveredBranchSlots": 46
+    }
+  ]
+}

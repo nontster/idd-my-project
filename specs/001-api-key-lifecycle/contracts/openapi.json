@@ -1,0 +1,2680 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "API Key Lifecycle — First Slice",
+    "version": "1.0.0",
+    "description": "Design contract governed by constitution v1.2.0 and spec.md. Key APIs serve enterprise integration developers; validation serves trusted platform services. Existing identity verification is a required host adapter, not an implemented identity system. All six key paths require existing caller authentication. HTTPS is required outside explicit loopback development/test. This document contains no raw secret examples."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:3000",
+      "description": "Explicit loopback development/test composition only. Real deployment supplies HTTPS at its configured host."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Management"
+    },
+    {
+      "name": "Validation"
+    },
+    {
+      "name": "Operations"
+    }
+  ],
+  "x-error-precedence": {
+    "management": [
+      "authenticate existing identity",
+      "scope presence/format",
+      "verified developer Tenant authority",
+      "key identifier presence/format and scoped lookup",
+      "operation"
+    ],
+    "validation": [
+      "authenticate existing service identity",
+      "trusted-service authorization",
+      "presented key presence",
+      "request envelope and verified expected Tenant context",
+      "full key match/current state and final fresh decision"
+    ]
+  },
+  "x-timeout-policy": {
+    "contract": "request-lifecycle.md",
+    "defaultsMs": {
+      "gatewayValidationTimeoutMs": 500,
+      "validationTimeoutMs": 200,
+      "identityTimeoutMs": 100,
+      "managementTimeoutMs": 2000
+    },
+    "scope": "All six authenticated key paths; readiness is outside this request policy.",
+    "deadline": "Absolute local monotonic time; elapsed >= budget expires. Identity budget is shared from first verifier invocation and clamped to the request deadline. No deadline reset or caller-controlled extension.",
+    "configuration": "Trusted positive integer millisecond settings; identityTimeoutMs <= validationTimeoutMs < gatewayValidationTimeoutMs and identityTimeoutMs <= managementTimeoutMs. Invalid settings refuse bootstrap. Overrides require latency revalidation.",
+    "automaticRetries": 0,
+    "sqliteBusyWaitMs": 0,
+    "cancellation": "Expired/cancelled waiters cannot enter a decision/mutation callback. Abort or ignore late async results. Once a synchronous mutation starts, resolve its commit outcome and preserve committed revocation/audit truth. No late 2xx or secret replay.",
+    "timeoutErrors": {
+      "createApiKey": "E-08",
+      "listApiKeys": "E-14",
+      "revokeApiKey": "E-09",
+      "validateApiKey": "E-10",
+      "rejectSecretRetrieval": "OPERATION_UNAVAILABLE",
+      "rejectReactivation": "OPERATION_UNAVAILABLE"
+    },
+    "httpStatus": 503,
+    "disconnectedClient": "No response body; missing response never confirms success.",
+    "explicitRetries": "New validation uses a fresh requestId; repeated revocation preserves original metadata; creation is a new distinct attempt after checking the key list, never replay of the secret.",
+    "measurement": "Budgets are cooperative and do not preempt synchronous work. Existing latency targets and complete failure accounting still apply."
+  },
+  "x-request-limits": {
+    "jsonBodyBytes": 8192,
+    "description": "Transport safety envelope, not a Tenant key quota. Do not log bodies/headers/raw URIs on limit or parse errors."
+  },
+  "x-transport-errors": {
+    "REQUEST_INVALID": {
+      "httpStatus": 400,
+      "message": "Invalid request."
+    },
+    "REQUEST_TOO_LARGE": {
+      "httpStatus": 413,
+      "message": "Request body is too large."
+    },
+    "UNSUPPORTED_MEDIA_TYPE": {
+      "httpStatus": 415,
+      "message": "Content-Type must be application/json."
+    },
+    "NOT_FOUND": {
+      "httpStatus": 404,
+      "message": "Resource not found."
+    },
+    "METHOD_NOT_ALLOWED": {
+      "httpStatus": 405,
+      "message": "Method is not allowed."
+    }
+  },
+  "x-unsupported-operations": "Recognized unsupported lifecycle operations receive E-15 after identity/scope checks. Unknown URLs use NOT_FOUND/404; wrong methods use METHOD_NOT_ALLOWED/405. These transport errors never echo request values.",
+  "paths": {
+    "/v1/api-keys": {
+      "post": {
+        "operationId": "createApiKey",
+        "summary": "Create a Tenant-scoped key and return the secret once",
+        "description": "Authentication and Tenant authorization precede issuance. Empty object or no body. Do not accept an API Key as management identity. A retry is a new creation attempt; a lost secret is irretrievable.",
+        "tags": [
+          "Management"
+        ],
+        "security": [
+          {
+            "DeveloperIdentity": []
+          }
+        ],
+        "x-required-principal": "tenant-developer",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantScope"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful operation. Mutation success requires confirmed durable state and effective enforcement.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedKey"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "E-01",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "WWW-Authenticate": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "Bearer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-01"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-01": {
+                    "value": {
+                      "error": {
+                        "code": "E-01",
+                        "message": "Authentication is required."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "E-02 / E-03 / REQUEST_INVALID",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-02"
+                    },
+                    {
+                      "$ref": "#/components/schemas/E-03"
+                    },
+                    {
+                      "$ref": "#/components/schemas/REQUEST_INVALID"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-02": {
+                    "value": {
+                      "error": {
+                        "code": "E-02",
+                        "message": "Tenant scope is required."
+                      }
+                    }
+                  },
+                  "E-03": {
+                    "value": {
+                      "error": {
+                        "code": "E-03",
+                        "message": "Tenant scope is invalid."
+                      }
+                    }
+                  },
+                  "REQUEST_INVALID": {
+                    "value": {
+                      "error": {
+                        "code": "REQUEST_INVALID",
+                        "message": "Invalid request."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "E-04",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-04"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-04": {
+                    "value": {
+                      "error": {
+                        "code": "E-04",
+                        "message": "You are not authorized to manage API keys for this Tenant."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "E-08",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-08"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-08": {
+                    "value": {
+                      "error": {
+                        "code": "E-08",
+                        "message": "Unable to confirm API key creation. Check your key list before retrying."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "REQUEST_TOO_LARGE",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/REQUEST_TOO_LARGE"
+                    }
+                  ]
+                },
+                "examples": {
+                  "REQUEST_TOO_LARGE": {
+                    "value": {
+                      "error": {
+                        "code": "REQUEST_TOO_LARGE",
+                        "message": "Request body is too large."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/UNSUPPORTED_MEDIA_TYPE"
+                    }
+                  ]
+                },
+                "examples": {
+                  "UNSUPPORTED_MEDIA_TYPE": {
+                    "value": {
+                      "error": {
+                        "code": "UNSUPPORTED_MEDIA_TYPE",
+                        "message": "Content-Type must be application/json."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listApiKeys",
+        "summary": "List all non-secret key metadata in the selected Tenant",
+        "description": "Includes active and revoked records created by any same-Tenant developer. Complete collection, no secrets/hashes/salts, no implicit cross-Tenant scope.",
+        "tags": [
+          "Management"
+        ],
+        "security": [
+          {
+            "DeveloperIdentity": []
+          }
+        ],
+        "x-required-principal": "tenant-developer",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantScope"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation. Mutation success requires confirmed durable state and effective enforcement.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyCollection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "E-01",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "WWW-Authenticate": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "Bearer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-01"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-01": {
+                    "value": {
+                      "error": {
+                        "code": "E-01",
+                        "message": "Authentication is required."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "E-02 / E-03",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-02"
+                    },
+                    {
+                      "$ref": "#/components/schemas/E-03"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-02": {
+                    "value": {
+                      "error": {
+                        "code": "E-02",
+                        "message": "Tenant scope is required."
+                      }
+                    }
+                  },
+                  "E-03": {
+                    "value": {
+                      "error": {
+                        "code": "E-03",
+                        "message": "Tenant scope is invalid."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "E-04",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-04"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-04": {
+                    "value": {
+                      "error": {
+                        "code": "E-04",
+                        "message": "You are not authorized to manage API keys for this Tenant."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "E-14",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-14"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-14": {
+                    "value": {
+                      "error": {
+                        "code": "E-14",
+                        "message": "Unable to list API keys. Try again."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/api-keys/revocations": {
+      "post": {
+        "operationId": "revokeApiKey",
+        "summary": "Immediately and permanently revoke a same-Tenant key",
+        "description": "First and repeated/concurrent revocation return 200 only after enforcement. Preserve the original revocation timestamp. Unknown or foreign key IDs are indistinguishable. Missing/empty body or keyId maps E-05.",
+        "tags": [
+          "Management"
+        ],
+        "security": [
+          {
+            "DeveloperIdentity": []
+          }
+        ],
+        "x-required-principal": "tenant-developer",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantScope"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation. Mutation success requires confirmed durable state and effective enforcement.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokedKey"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "E-01",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "WWW-Authenticate": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "Bearer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-01"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-01": {
+                    "value": {
+                      "error": {
+                        "code": "E-01",
+                        "message": "Authentication is required."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "E-02 / E-03 / E-05 / REQUEST_INVALID",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-02"
+                    },
+                    {
+                      "$ref": "#/components/schemas/E-03"
+                    },
+                    {
+                      "$ref": "#/components/schemas/E-05"
+                    },
+                    {
+                      "$ref": "#/components/schemas/REQUEST_INVALID"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-02": {
+                    "value": {
+                      "error": {
+                        "code": "E-02",
+                        "message": "Tenant scope is required."
+                      }
+                    }
+                  },
+                  "E-03": {
+                    "value": {
+                      "error": {
+                        "code": "E-03",
+                        "message": "Tenant scope is invalid."
+                      }
+                    }
+                  },
+                  "E-05": {
+                    "value": {
+                      "error": {
+                        "code": "E-05",
+                        "message": "Key identifier is required."
+                      }
+                    }
+                  },
+                  "REQUEST_INVALID": {
+                    "value": {
+                      "error": {
+                        "code": "REQUEST_INVALID",
+                        "message": "Invalid request."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "E-04",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-04"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-04": {
+                    "value": {
+                      "error": {
+                        "code": "E-04",
+                        "message": "You are not authorized to manage API keys for this Tenant."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "E-09",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-09"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-09": {
+                    "value": {
+                      "error": {
+                        "code": "E-09",
+                        "message": "Unable to confirm revocation. Retry revocation; treat this key as potentially active."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "E-12",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-12"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-12": {
+                    "value": {
+                      "error": {
+                        "code": "E-12",
+                        "message": "API key not found."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "REQUEST_TOO_LARGE",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/REQUEST_TOO_LARGE"
+                    }
+                  ]
+                },
+                "examples": {
+                  "REQUEST_TOO_LARGE": {
+                    "value": {
+                      "error": {
+                        "code": "REQUEST_TOO_LARGE",
+                        "message": "Request body is too large."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/UNSUPPORTED_MEDIA_TYPE"
+                    }
+                  ]
+                },
+                "examples": {
+                  "UNSUPPORTED_MEDIA_TYPE": {
+                    "value": {
+                      "error": {
+                        "code": "UNSUPPORTED_MEDIA_TYPE",
+                        "message": "Content-Type must be application/json."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/api-keys/validations": {
+      "post": {
+        "operationId": "validateApiKey",
+        "summary": "Validate one platform operation using a trusted service identity",
+        "description": "Order: authenticate caller, verify trusted-service role, then examine key presence and establish trusted Tenant context/request binding. Expected Tenant is verified by the injected host adapter. Never reuse a positive result for another operation; every admission obtains a fresh authoritative decision.",
+        "tags": [
+          "Validation"
+        ],
+        "security": [
+          {
+            "ServiceIdentity": []
+          }
+        ],
+        "x-required-principal": "trusted-platform-service",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful operation. Mutation success requires confirmed durable state and effective enforcement.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationDecision"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "E-01",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "WWW-Authenticate": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "Bearer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-01"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-01": {
+                    "value": {
+                      "error": {
+                        "code": "E-01",
+                        "message": "Authentication is required."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "E-06 / REQUEST_INVALID",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-06"
+                    },
+                    {
+                      "$ref": "#/components/schemas/REQUEST_INVALID"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-06": {
+                    "value": {
+                      "error": {
+                        "code": "E-06",
+                        "message": "API key is required."
+                      }
+                    }
+                  },
+                  "REQUEST_INVALID": {
+                    "value": {
+                      "error": {
+                        "code": "REQUEST_INVALID",
+                        "message": "Invalid request."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "E-07 / E-16",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-07"
+                    },
+                    {
+                      "$ref": "#/components/schemas/E-16"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-07": {
+                    "value": {
+                      "error": {
+                        "code": "E-07",
+                        "message": "Invalid or revoked API key."
+                      }
+                    }
+                  },
+                  "E-16": {
+                    "value": {
+                      "error": {
+                        "code": "E-16",
+                        "message": "You are not authorized to validate API keys."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "E-10",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-10"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-10": {
+                    "value": {
+                      "error": {
+                        "code": "E-10",
+                        "message": "API key validation is unavailable. Access denied. Try again."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "REQUEST_TOO_LARGE",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/REQUEST_TOO_LARGE"
+                    }
+                  ]
+                },
+                "examples": {
+                  "REQUEST_TOO_LARGE": {
+                    "value": {
+                      "error": {
+                        "code": "REQUEST_TOO_LARGE",
+                        "message": "Request body is too large."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "UNSUPPORTED_MEDIA_TYPE",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/UNSUPPORTED_MEDIA_TYPE"
+                    }
+                  ]
+                },
+                "examples": {
+                  "UNSUPPORTED_MEDIA_TYPE": {
+                    "value": {
+                      "error": {
+                        "code": "UNSUPPORTED_MEDIA_TYPE",
+                        "message": "Content-Type must be application/json."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/api-keys/{keyId}/secret": {
+      "get": {
+        "operationId": "rejectSecretRetrieval",
+        "summary": "Reject retrieval of an issued secret",
+        "description": "Deliberate rejection contract, not a retrieval capability. Authenticated authorized scoped lookup must precede E-11. Unknown/foreign IDs receive E-12.",
+        "tags": [
+          "Management"
+        ],
+        "security": [
+          {
+            "DeveloperIdentity": []
+          }
+        ],
+        "x-required-principal": "tenant-developer",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantScope"
+          },
+          {
+            "$ref": "#/components/parameters/KeyId"
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "E-01",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "WWW-Authenticate": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "Bearer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-01"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-01": {
+                    "value": {
+                      "error": {
+                        "code": "E-01",
+                        "message": "Authentication is required."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "E-02 / E-03",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-02"
+                    },
+                    {
+                      "$ref": "#/components/schemas/E-03"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-02": {
+                    "value": {
+                      "error": {
+                        "code": "E-02",
+                        "message": "Tenant scope is required."
+                      }
+                    }
+                  },
+                  "E-03": {
+                    "value": {
+                      "error": {
+                        "code": "E-03",
+                        "message": "Tenant scope is invalid."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "E-04",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-04"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-04": {
+                    "value": {
+                      "error": {
+                        "code": "E-04",
+                        "message": "You are not authorized to manage API keys for this Tenant."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-11",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-11"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-11": {
+                    "value": {
+                      "error": {
+                        "code": "E-11",
+                        "message": "API key secrets are only returned at creation and cannot be retrieved."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "E-12",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-12"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-12": {
+                    "value": {
+                      "error": {
+                        "code": "E-12",
+                        "message": "API key not found."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Identity or scoped lookup cannot be confirmed. Disclose no key state.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OPERATION_UNAVAILABLE"
+                },
+                "examples": {
+                  "OPERATION_UNAVAILABLE": {
+                    "value": {
+                      "error": {
+                        "code": "OPERATION_UNAVAILABLE",
+                        "message": "Unable to process this API key request. Try again."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/api-keys/{keyId}/reactivate": {
+      "post": {
+        "operationId": "rejectReactivation",
+        "summary": "Reject reactivation of a revoked key",
+        "description": "No reactivation capability exists. A known revoked key receives E-13 and remains revoked; a known active key receives E-15. Unknown/foreign IDs receive E-12.",
+        "tags": [
+          "Management"
+        ],
+        "security": [
+          {
+            "DeveloperIdentity": []
+          }
+        ],
+        "x-required-principal": "tenant-developer",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantScope"
+          },
+          {
+            "$ref": "#/components/parameters/KeyId"
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "E-01",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "WWW-Authenticate": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "Bearer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-01"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-01": {
+                    "value": {
+                      "error": {
+                        "code": "E-01",
+                        "message": "Authentication is required."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "E-02 / E-03 / E-15",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-02"
+                    },
+                    {
+                      "$ref": "#/components/schemas/E-03"
+                    },
+                    {
+                      "$ref": "#/components/schemas/E-15"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-02": {
+                    "value": {
+                      "error": {
+                        "code": "E-02",
+                        "message": "Tenant scope is required."
+                      }
+                    }
+                  },
+                  "E-03": {
+                    "value": {
+                      "error": {
+                        "code": "E-03",
+                        "message": "Tenant scope is invalid."
+                      }
+                    }
+                  },
+                  "E-15": {
+                    "value": {
+                      "error": {
+                        "code": "E-15",
+                        "message": "This API key operation is not supported."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "E-04",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-04"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-04": {
+                    "value": {
+                      "error": {
+                        "code": "E-04",
+                        "message": "You are not authorized to manage API keys for this Tenant."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "E-12",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-12"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-12": {
+                    "value": {
+                      "error": {
+                        "code": "E-12",
+                        "message": "API key not found."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-13",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/E-13"
+                    }
+                  ]
+                },
+                "examples": {
+                  "E-13": {
+                    "value": {
+                      "error": {
+                        "code": "E-13",
+                        "message": "Revoked API keys cannot be re-activated."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Identity or scoped lookup cannot be confirmed. Disclose no key state.",
+            "headers": {
+              "Cache-Control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OPERATION_UNAVAILABLE"
+                },
+                "examples": {
+                  "OPERATION_UNAVAILABLE": {
+                    "value": {
+                      "error": {
+                        "code": "OPERATION_UNAVAILABLE",
+                        "message": "Unable to process this API key request. Try again."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "readiness",
+        "summary": "Read operational readiness without exposing configuration",
+        "tags": [
+          "Operations"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Authority storage recovered and required dependencies wired.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Readiness"
+                    },
+                    {
+                      "properties": {
+                        "ready": {
+                          "const": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready. No diagnostic details are disclosed.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Required on successes and failures. HTTP intermediary storage is prohibited.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Readiness"
+                    },
+                    {
+                      "properties": {
+                        "ready": {
+                          "const": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "DeveloperIdentity": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Existing identity credential verified by the host adapter; caller must be a developer authorized for X-Tenant-ID. No JWT/provider format is invented."
+      },
+      "ServiceIdentity": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Separate existing trusted platform service credential. Presenting only the API Key under examination does not satisfy this scheme. Verified developer callers are forbidden (E-16)."
+      }
+    },
+    "parameters": {
+      "TenantScope": {
+        "name": "X-Tenant-ID",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/TenantId"
+        },
+        "description": "Explicit management scope selector. Omitted/null/empty -> E-02; malformed or duplicate header -> E-03; well-formed inaccessible/nonexistent -> E-04. Identity verifies membership; header alone is never trusted."
+      },
+      "KeyId": {
+        "name": "keyId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Stable key identifier. Nonempty invalid/unknown/foreign identifiers receive E-12 after authorized Tenant context."
+      }
+    },
+    "schemas": {
+      "TenantId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256,
+        "description": "Opaque, case-sensitive existing platform Tenant selector. The host IdentityVerifier defines semantic format and verifies authority; this string alone grants nothing."
+      },
+      "KeyMetadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "keyId",
+          "tenantId",
+          "prefix",
+          "status",
+          "createdAt",
+          "revokedAt"
+        ],
+        "properties": {
+          "keyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "$ref": "#/components/schemas/TenantId"
+          },
+          "prefix": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "revoked"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revokedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "active"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "revokedAt": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "revokedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "CreatedKey": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "keyId",
+          "tenantId",
+          "prefix",
+          "status",
+          "createdAt",
+          "revokedAt",
+          "apiKey"
+        ],
+        "properties": {
+          "keyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "$ref": "#/components/schemas/TenantId"
+          },
+          "prefix": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "active"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revokedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "apiKey": {
+            "type": "string",
+            "minLength": 52,
+            "maxLength": 52,
+            "pattern": "^[A-Za-z0-9_-]{8}\\.[A-Za-z0-9_-]{43}$",
+            "readOnly": true,
+            "description": "Full raw secret returned only in this successful creation response. No persisted example, retrieval, recovery, response logging, or caching."
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "active"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "revokedAt": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "revokedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "KeyCollection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeyMetadata"
+            }
+          }
+        },
+        "description": "Complete active and revoked collection in the authorized Tenant. Empty items is success; no pagination or silent truncation in this slice."
+      },
+      "CreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "RevokeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "keyId"
+        ],
+        "properties": {
+          "keyId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "description": "Absent, null, or empty keyId -> E-05. A nonempty invalid/unknown/foreign identifier -> E-12 after Tenant authorization."
+      },
+      "RevokedKey": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "keyId",
+          "status",
+          "revokedAt"
+        ],
+        "properties": {
+          "keyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "const": "revoked"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ValidationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "apiKey",
+          "expectedTenantId",
+          "requestId"
+        ],
+        "properties": {
+          "apiKey": {
+            "type": "string",
+            "writeOnly": true,
+            "description": "Transient full API Key. Missing/null/empty -> E-06; nonempty malformed or prefix-only -> E-07. Never trim, echo, cache, or log. Body considered only after trusted-service authentication."
+          },
+          "expectedTenantId": {
+            "$ref": "#/components/schemas/TenantId"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "description": "Caller must authenticate separately as a trusted platform service. expectedTenantId is a selector verified by the host adapter; missing/unconfirmable context -> E-10. Unique requestId binds one pending operation."
+      },
+      "ValidationDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "keyId",
+          "tenantId",
+          "generation",
+          "requestId",
+          "decisionId"
+        ],
+        "properties": {
+          "keyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "$ref": "#/components/schemas/TenantId"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "decisionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "description": "Single-use result for the original pending operation. Never a reusable bearer verdict or offline cache authorization. Contains no raw key, digest, or salt."
+      },
+      "Readiness": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ready"
+        ],
+        "properties": {
+          "ready": {
+            "type": "boolean"
+          }
+        }
+      },
+      "E-01": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-01"
+              },
+              "message": {
+                "type": "string",
+                "const": "Authentication is required."
+              }
+            }
+          }
+        }
+      },
+      "E-02": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-02"
+              },
+              "message": {
+                "type": "string",
+                "const": "Tenant scope is required."
+              }
+            }
+          }
+        }
+      },
+      "E-03": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-03"
+              },
+              "message": {
+                "type": "string",
+                "const": "Tenant scope is invalid."
+              }
+            }
+          }
+        }
+      },
+      "E-04": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-04"
+              },
+              "message": {
+                "type": "string",
+                "const": "You are not authorized to manage API keys for this Tenant."
+              }
+            }
+          }
+        }
+      },
+      "E-05": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-05"
+              },
+              "message": {
+                "type": "string",
+                "const": "Key identifier is required."
+              }
+            }
+          }
+        }
+      },
+      "E-06": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-06"
+              },
+              "message": {
+                "type": "string",
+                "const": "API key is required."
+              }
+            }
+          }
+        }
+      },
+      "E-07": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-07"
+              },
+              "message": {
+                "type": "string",
+                "const": "Invalid or revoked API key."
+              }
+            }
+          }
+        }
+      },
+      "E-08": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-08"
+              },
+              "message": {
+                "type": "string",
+                "const": "Unable to confirm API key creation. Check your key list before retrying."
+              }
+            }
+          }
+        }
+      },
+      "E-09": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-09"
+              },
+              "message": {
+                "type": "string",
+                "const": "Unable to confirm revocation. Retry revocation; treat this key as potentially active."
+              }
+            }
+          }
+        }
+      },
+      "E-10": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-10"
+              },
+              "message": {
+                "type": "string",
+                "const": "API key validation is unavailable. Access denied. Try again."
+              }
+            }
+          }
+        }
+      },
+      "E-11": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-11"
+              },
+              "message": {
+                "type": "string",
+                "const": "API key secrets are only returned at creation and cannot be retrieved."
+              }
+            }
+          }
+        }
+      },
+      "E-12": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-12"
+              },
+              "message": {
+                "type": "string",
+                "const": "API key not found."
+              }
+            }
+          }
+        }
+      },
+      "E-13": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-13"
+              },
+              "message": {
+                "type": "string",
+                "const": "Revoked API keys cannot be re-activated."
+              }
+            }
+          }
+        }
+      },
+      "E-14": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-14"
+              },
+              "message": {
+                "type": "string",
+                "const": "Unable to list API keys. Try again."
+              }
+            }
+          }
+        }
+      },
+      "E-15": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-15"
+              },
+              "message": {
+                "type": "string",
+                "const": "This API key operation is not supported."
+              }
+            }
+          }
+        }
+      },
+      "E-16": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "E-16"
+              },
+              "message": {
+                "type": "string",
+                "const": "You are not authorized to validate API keys."
+              }
+            }
+          }
+        }
+      },
+      "REQUEST_INVALID": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "REQUEST_INVALID"
+              },
+              "message": {
+                "type": "string",
+                "const": "Invalid request."
+              }
+            }
+          }
+        }
+      },
+      "REQUEST_TOO_LARGE": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "REQUEST_TOO_LARGE"
+              },
+              "message": {
+                "type": "string",
+                "const": "Request body is too large."
+              }
+            }
+          }
+        }
+      },
+      "UNSUPPORTED_MEDIA_TYPE": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "UNSUPPORTED_MEDIA_TYPE"
+              },
+              "message": {
+                "type": "string",
+                "const": "Content-Type must be application/json."
+              }
+            }
+          }
+        }
+      },
+      "NOT_FOUND": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "NOT_FOUND"
+              },
+              "message": {
+                "type": "string",
+                "const": "Resource not found."
+              }
+            }
+          }
+        }
+      },
+      "METHOD_NOT_ALLOWED": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "METHOD_NOT_ALLOWED"
+              },
+              "message": {
+                "type": "string",
+                "const": "Method is not allowed."
+              }
+            }
+          }
+        }
+      },
+      "OPERATION_UNAVAILABLE": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "const": "OPERATION_UNAVAILABLE"
+              },
+              "message": {
+                "type": "string",
+                "const": "Unable to process this API key request. Try again."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-operational-errors": {
+    "OPERATION_UNAVAILABLE": {
+      "httpStatus": 503,
+      "message": "Unable to process this API key request. Try again.",
+      "appliesTo": [
+        "rejectSecretRetrieval",
+        "rejectReactivation"
+      ]
+    }
+  }
+}

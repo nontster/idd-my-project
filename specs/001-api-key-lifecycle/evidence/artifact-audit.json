@@ -1,0 +1,10 @@
+{
+  "complete": true,
+  "evidenceFilesScanned": 84,
+  "unexpectedCandidateFiles": [],
+  "publicRuntimeArchiveChecksumClassified": true,
+  "confirmedPlaintextKeyFindings": 0,
+  "confirmedKeyHashFindings": 0,
+  "requestBodiesRetained": false,
+  "method": "bounded full canonical API Key/SHA256 literal scan plus executable per-request log/event/response secret-absence assertions; no matched material printed or retained"
+}
